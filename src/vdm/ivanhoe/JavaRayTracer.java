@@ -335,7 +335,7 @@ public class JavaRayTracer {
                 double illum = Vector.dot(livec, norm);
                 Color lcolor = (illum > 0) ? Color.scale(illum, light.color) : Color.defaultColor;
                 double specular = Vector.dot(livec, Vector.norm(rd));
-                Color scolor = (specular > 0) ? Color.scale(Math.pow(specular, thing.surface.roughness), light.color) : Color.defaultColor;
+                Color scolor = (specular > 0) ? Color.scale(Math.pow(specular, thing.getSurface().roughness), light.color) : Color.defaultColor;
                 return Color.plus(col, Color.plus(Color.times(thing.getSurface().diffuse(pos), lcolor), Color.times(thing.getSurface().specular(pos), scolor)));
             }
         }

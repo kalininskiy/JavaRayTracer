@@ -19,7 +19,6 @@ public class Main {
 
         Graphics graphics = frame.getGraphics();
         // ImageComponent imageComponent = new ImageComponent();
-
         // imageComponent.paintComponent(graphics);
 
         int width = 640;
