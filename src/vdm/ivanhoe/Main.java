@@ -2,7 +2,8 @@ package vdm.ivanhoe;
 
 import java.awt.*;
 import javax.swing.*;
-import vdm.ivanhoe.JavaRayTracer;
+
+// import vdm.ivanhoe.JavaRayTracer;
 
 /**
  *  JavaRayTracer
@@ -17,9 +18,16 @@ public class Main {
         frame.setVisible(true);
 
         Graphics graphics = frame.getGraphics();
-        ImageComponent imageComponent = new ImageComponent();
+        // ImageComponent imageComponent = new ImageComponent();
 
-        imageComponent.paintComponent(graphics);
+        // imageComponent.paintComponent(graphics);
+
+        int width = 640;
+        int height = 640;
+
+        JavaRayTracer rayTracer = new JavaRayTracer();
+
+        rayTracer.execRender(graphics, width, height);
 
         graphics.dispose();
 //            }

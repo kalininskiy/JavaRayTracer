@@ -1,9 +1,6 @@
 package vdm.ivanhoe;
 
-import org.jetbrains.annotations.Contract;
-
 import java.awt.*;
-import java.util.Arrays;
 
 /**
  *  JavaRayTracer
@@ -126,19 +123,19 @@ public class JavaRayTracer {
      *  Surface
      */
     public interface Surface {
-        public Color diffuse(Vector pos);
-        public Color specular(Vector pos);
-        public double reflect(Vector pos);
-        public double roughness = 0;
+        Color diffuse(Vector pos);
+        Color specular(Vector pos);
+        double reflect(Vector pos);
+        double roughness = 0;
     }
 
     /**
      *  Thing
      */
     public interface Thing {
-        public Intersection intersect(Ray ray);
-        public Vector normal(Vector pos);
-        public Surface surface = null;
+        Intersection intersect(Ray ray);
+        Vector normal(Vector pos);
+        Surface surface = null;
     }
 
     /**
@@ -180,6 +177,7 @@ public class JavaRayTracer {
         public Sphere(Vector center, double radius, Surface surface) {
             this.radius2 = radius * radius;
             this.center = center;
+            this.surface = surface;
         }
 
         public Vector normal(Vector pos) {
@@ -212,9 +210,15 @@ public class JavaRayTracer {
         double offset;
         Surface surface;
 
+        public Plane(Vector norm, double offset, Surface surface) {
+            this.norm = norm;
+            this.offset = offset;
+            this.surface = surface;
+        }
+
         public Vector normal(Vector pos) {
             return Vector.norm(pos);
-        };
+        }
 
         public Intersection intersect(Ray ray) {
             double denom = Vector.dot(norm, ray.dir);
@@ -225,26 +229,20 @@ public class JavaRayTracer {
                 return new Intersection(this, ray, dist);
             }
         }
-
-        public Plane(Vector norm, double offset, Surface surface) {
-            this.norm = norm;
-            this.offset = offset;
-            this.surface = surface;
-        }
     }
 
     /**
      *  Surfaces
      */
-    public static class Surfaces {
-        public static class shiny implements Surface {
+    public class Surfaces {
+        public class shiny implements Surface {
             public Color diffuse(Vector pos) { return Color.white; }
             public Color specular(Vector pos) { return Color.grey; }
             public double reflect(Vector pos) { return 0.7; }
             public double roughness = 250;
         }
 
-        public static class checkerboard implements Surface {
+        public class checkerboard implements Surface {
             public Color diffuse(Vector pos) {
                 if ((Math.floor(pos.z) + Math.floor(pos.x)) % 2 != 0) {
                     return Color.white;
@@ -285,7 +283,7 @@ public class JavaRayTracer {
         }
 
         private double testRay(Ray ray, Scene scene) {
-            Intersection isect = this.intersections(ray, scene);
+            Intersection isect = intersections(ray, scene);
             if (isect != null) {
                 return isect.dist;
             } else {
@@ -298,6 +296,12 @@ public class JavaRayTracer {
             if (isect == null) {
                 return Color.background;
             } else {
+                System.out.println("---");
+                System.out.println(isect.thing);
+                System.out.println(scene.things);
+                System.out.println(scene.things.length);
+                System.out.println(depth);
+                System.out.println("---");
                 return shade(isect, scene, depth);
             }
         }
@@ -313,14 +317,14 @@ public class JavaRayTracer {
         }
 
         private Color getReflectionColor(Thing thing, Vector pos, Vector normal, Vector rd, Scene scene, double depth) {
-            return Color.scale(thing.surface.reflect(pos), this.traceRay(new Ray(pos, rd), scene, depth + 1));
+            return Color.scale(thing.surface.reflect(pos), traceRay(new Ray(pos, rd), scene, depth + 1));
         }
 
         private Color addLight(Color col, Light light, Thing thing, Vector pos, Vector norm, Vector rd, Scene scene) {
             Vector ldis = Vector.minus(light.pos, pos);
             Vector livec = Vector.norm(ldis);
-            double neatIsect = this.testRay(new Ray (pos, livec), scene);
-            boolean isInShadow = (neatIsect == 0) ? false : (neatIsect <= Vector.mag(ldis));
+            double neatIsect = testRay(new Ray (pos, livec), scene);
+            boolean isInShadow = !(neatIsect == 0) && (neatIsect <= Vector.mag(ldis));
             if (isInShadow) {
                 return col;
             } else {
@@ -328,22 +332,34 @@ public class JavaRayTracer {
                 Color lcolor = (illum > 0) ? Color.scale(illum, light.color) : Color.defaultColor;
                 double specular = Vector.dot(livec, Vector.norm(rd));
                 Color scolor = (specular > 0) ? Color.scale(Math.pow(specular, thing.surface.roughness), light.color) : Color.defaultColor;
+//                System.out.println("thing = " + thing);
+//                System.out.println("thing.surface = " + thing.surface);
+//                System.out.println("thing.surface.diffuse(pos) = " + thing.surface.diffuse(pos));
+                System.out.println("thing.surface.specular(pos) = " + thing.surface.specular(pos));
                 return Color.plus(col, Color.plus(Color.times(thing.surface.diffuse(pos), lcolor), Color.times(thing.surface.specular(pos), scolor)));
             }
         }
 
         private Color getNaturalColor(Thing thing, Vector pos, Vector norm, Vector rd, Scene scene) {
+            Color initialColor = Color.defaultColor;
+            Color resultColor = addLight(initialColor, scene.lights[0], thing, pos, norm, rd, scene);
+
+            for (int i = 1; i < scene.lights.length; i++) {
+                resultColor = addLight(resultColor, scene.lights[i], thing, pos, norm, rd, scene);
+            }
+
+            return resultColor;
+/*
                 return Arrays.stream(scene.lights)
                         .reduce(
                             Color.defaultColor,
-                            (item) -> addLight(item.color, item, thing, pos, norm, rd, scene)
+                            (col, light) -> addLight(col.color, light, thing, pos, norm, rd, scene)
                         );
+*/
         }
 
 
-        @Contract(pure = true)
         private double recenterX(double x, int screenWidth) { return (x - (screenWidth / 2.0)) / 2.0 / screenWidth; }
-        @Contract(pure = true)
         private double recenterY(double y, int screenHeight) { return - (y - (screenHeight / 2.0)) / 2.0 / screenHeight; }
 
         private Vector getPoint(double x, double y, Camera camera, int screenWidth, int screenHeight) {
@@ -366,6 +382,35 @@ public class JavaRayTracer {
                 }
             }
         }
+    }
+
+    public Scene defaultScene() {
+        Surfaces surface = new Surfaces();
+        Surfaces.checkerboard checkerboard = surface.new checkerboard();
+        Surfaces.shiny shiny = surface.new shiny();
+
+//        System.out.println("checkerboard = " + checkerboard.diffuse(new Vector(-2.0, 2.5, 0.0)));
+//        System.out.println("shiny = " + shiny.specular(new Vector(-2.0, 2.5, 0.0)));
+
+        Thing[] things = {
+                new Plane(new Vector(0.0, 1.0, 0.0), 0.0, checkerboard),
+                new Sphere(new Vector(0.0, 1.0, -0.25), 1.0, shiny),
+                new Sphere(new Vector(-1.0, 0.5, 1.5), 0.5, shiny)
+        };
+
+        Light[] lights = {
+                new Light(new Vector(-2.0, 2.5, 0.0), new Color(0.49, 0.07, 0.07)),
+                new Light(new Vector(1.5, 2.5, 1.5), new Color(0.07, 0.07, 0.49)),
+                new Light(new Vector(1.5, 2.5, -1.5), new Color(0.07, 0.49, 0.071)),
+                new Light(new Vector(0.0, 3.5, 0.0), new Color(0.21, 0.21, 0.35))
+        };
+
+        return new Scene(things, lights, new Camera(new Vector(3.0, 2.0, 4.0), new Vector(-1.0, 0.5, 0.0)));
+    }
+
+    public void execRender(Graphics graphics, int width, int height) {
+        RayTracer rt = new RayTracer();
+        rt.render(defaultScene(), graphics, width, height);
     }
 
 }
