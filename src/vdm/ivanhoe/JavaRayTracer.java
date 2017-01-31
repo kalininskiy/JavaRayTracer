@@ -136,6 +136,8 @@ public class JavaRayTracer {
         Intersection intersect(Ray ray);
         Vector normal(Vector pos);
         Surface surface = null;
+
+        Surface getSurface();
     }
 
     /**
@@ -180,6 +182,10 @@ public class JavaRayTracer {
             this.surface = surface;
         }
 
+        public Surface getSurface() {
+            return surface;
+        }
+
         public Vector normal(Vector pos) {
             return Vector.norm(Vector.minus(pos, this.center));
         }
@@ -214,6 +220,10 @@ public class JavaRayTracer {
             this.norm = norm;
             this.offset = offset;
             this.surface = surface;
+        }
+
+        public Surface getSurface() {
+            return surface;
         }
 
         public Vector normal(Vector pos) {
@@ -296,12 +306,6 @@ public class JavaRayTracer {
             if (isect == null) {
                 return Color.background;
             } else {
-                System.out.println("---");
-                System.out.println(isect.thing);
-                System.out.println(scene.things);
-                System.out.println(scene.things.length);
-                System.out.println(depth);
-                System.out.println("---");
                 return shade(isect, scene, depth);
             }
         }
@@ -317,7 +321,7 @@ public class JavaRayTracer {
         }
 
         private Color getReflectionColor(Thing thing, Vector pos, Vector normal, Vector rd, Scene scene, double depth) {
-            return Color.scale(thing.surface.reflect(pos), traceRay(new Ray(pos, rd), scene, depth + 1));
+            return Color.scale(thing.getSurface().reflect(pos), traceRay(new Ray(pos, rd), scene, depth + 1));
         }
 
         private Color addLight(Color col, Light light, Thing thing, Vector pos, Vector norm, Vector rd, Scene scene) {
@@ -332,11 +336,7 @@ public class JavaRayTracer {
                 Color lcolor = (illum > 0) ? Color.scale(illum, light.color) : Color.defaultColor;
                 double specular = Vector.dot(livec, Vector.norm(rd));
                 Color scolor = (specular > 0) ? Color.scale(Math.pow(specular, thing.surface.roughness), light.color) : Color.defaultColor;
-//                System.out.println("thing = " + thing);
-//                System.out.println("thing.surface = " + thing.surface);
-//                System.out.println("thing.surface.diffuse(pos) = " + thing.surface.diffuse(pos));
-                System.out.println("thing.surface.specular(pos) = " + thing.surface.specular(pos));
-                return Color.plus(col, Color.plus(Color.times(thing.surface.diffuse(pos), lcolor), Color.times(thing.surface.specular(pos), scolor)));
+                return Color.plus(col, Color.plus(Color.times(thing.getSurface().diffuse(pos), lcolor), Color.times(thing.getSurface().specular(pos), scolor)));
             }
         }
 
@@ -388,9 +388,6 @@ public class JavaRayTracer {
         Surfaces surface = new Surfaces();
         Surfaces.checkerboard checkerboard = surface.new checkerboard();
         Surfaces.shiny shiny = surface.new shiny();
-
-//        System.out.println("checkerboard = " + checkerboard.diffuse(new Vector(-2.0, 2.5, 0.0)));
-//        System.out.println("shiny = " + shiny.specular(new Vector(-2.0, 2.5, 0.0)));
 
         Thing[] things = {
                 new Plane(new Vector(0.0, 1.0, 0.0), 0.0, checkerboard),
